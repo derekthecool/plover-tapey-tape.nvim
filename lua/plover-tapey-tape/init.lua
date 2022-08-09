@@ -1,3 +1,8 @@
+local utils = require('plover-tapey-tape.utils')
+-- print(utils.run_shell_command('tail -n1 README.md'))
+print(utils.execute_command('tail -n1 README.md'))
+utils.get_tapey_tape_filename()
+
 -- TODO
 -- Add close function
 -- Get autodetection of text file for Linux, windows, and WSL.
@@ -7,6 +12,7 @@ local function update()
   local result = handle:read('*l')
   handle:close()
   result = result:match('(|.*|)')
+  print(utils.name)
   TapeyTape = result
   -- vim.inspect('In plugin plover-tapey-tape, setting the global variable TapeyTape to: ' .. TapeyTape)
 end
@@ -50,8 +56,8 @@ local function start()
     0,
     30,
     vim.schedule_wrap(function()
-      update()
       vim.api.nvim_win_set_cursor(tapey_tape_window_number, { vim.api.nvim_buf_line_count(0), 0 })
+      update()
     end)
   )
 end
