@@ -1,19 +1,27 @@
 local utils = require('plover-tapey-tape.utils')
--- print(utils.run_shell_command('tail -n1 README.md'))
-print(utils.execute_command('tail -n1 README.md'))
-utils.get_tapey_tape_filename()
 
 -- TODO
 -- Add close function
 -- Get autodetection of text file for Linux, windows, and WSL.
+
 local function update()
-  -- Using popen
-  local handle = io.popen('tail -n1 /mnt/c/Users/Derek\\ Lomax/AppData/Local/plover/plover/tapey_tape.txt')
-  local result = handle:read('*l')
-  handle:close()
-  result = result:match('(|.*|)')
-  print(utils.name)
-  TapeyTape = result
+  -- Using normal file read
+  local tapey_tape_file = io.open('/mnt/c/Users/Derek Lomax/AppData/Local/plover/plover/tapey_tape.txt', 'r')
+  -- Go to end of the file and then backwards by an offset
+  tapey_tape_file:seek('end', -200)
+  local line = ''
+  for _ = 1, 10 do
+    local current_line = tapey_tape_file:read('l')
+    if current_line then
+      current_line = current_line:match('(|.*|)')
+      line = current_line
+    else
+      break
+    end
+  end
+  tapey_tape_file:close()
+
+  TapeyTape = line
   -- vim.inspect('In plugin plover-tapey-tape, setting the global variable TapeyTape to: ' .. TapeyTape)
 end
 
@@ -56,7 +64,9 @@ local function start()
     0,
     30,
     vim.schedule_wrap(function()
-      vim.api.nvim_win_set_cursor(tapey_tape_window_number, { vim.api.nvim_buf_line_count(0), 0 })
+      if tapey_tape_window_number ~= nil then
+        vim.api.nvim_win_set_cursor(tapey_tape_window_number, { vim.api.nvim_buf_line_count(0), 0 })
+      end
       update()
     end)
   )
