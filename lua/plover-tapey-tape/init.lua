@@ -1,7 +1,9 @@
 local utils = require('plover-tapey-tape.utils')
 
 -- TODO
--- Add close function
+-- Add close function: this will need to close the open buffer and stop the the watching
+-- Add autocommand to run the stop function if the buffer is closed without running command
+
 -- Get autodetection of text file for Linux, windows, and WSL.
 
 local function update()
@@ -44,7 +46,12 @@ local function on_change(bufNr, filePath)
   w:stop()
   watch_tapey_tape_for_changes(bufNr, filePath)
   -- Lua API method to jump to end of file
-  vim.api.nvim_win_set_cursor(tapey_tape_window_number, { vim.api.nvim_buf_line_count(tapey_tape_buffer_number), 0 })
+  if tapey_tape_window_number ~= nil and tapey_tape_buffer_number ~= nil then
+    vim.api.nvim_win_set_cursor(
+      tapey_tape_window_number,
+      { vim.api.nvim_buf_line_count(tapey_tape_buffer_number), 0 }
+    )
+  end
 end
 
 function watch_tapey_tape_for_changes(bufNr, filePath)
@@ -67,7 +74,7 @@ local function start()
       if tapey_tape_window_number ~= nil then
         vim.api.nvim_win_set_cursor(tapey_tape_window_number, { vim.api.nvim_buf_line_count(0), 0 })
       end
-      update()
+      -- update()
     end)
   )
 end
