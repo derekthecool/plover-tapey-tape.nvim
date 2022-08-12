@@ -4,7 +4,7 @@
 return {
   filepath = 'auto',
   vertical_split_height = 3,
-  horizontal_split_width = 'auto',
+  horizontal_split_width =42,
   status_line_setup = {
     enabled = true,
     additional_filter = '(|.*|)',

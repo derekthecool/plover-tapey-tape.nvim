@@ -105,8 +105,31 @@ local function get_tapey_tape_filename()
   return nil
 end
 
+local function detect_tapey_tape_line_width()
+  local filename = get_tapey_tape_filename()
+  if filename ~= nil then
+    if file_exists(filename) then
+      local file = io.open(filename)
+      local maximum_line_length = 0
+      for _ = 1, 100 do
+        local line = file:read('l')
+        if #line > maximum_line_length then
+          maximum_line_length = #line
+        end
+      end
+
+      file:close()
+      return maximum_line_length
+    end
+  end
+
+  -- Return a sensible default if auto detect does not work
+  return 50
+end
+
 return {
   setup = setup,
   execute_command = execute_command,
   get_tapey_tape_filename = get_tapey_tape_filename,
+  detect_tapey_tape_line_width = detect_tapey_tape_line_width,
 }

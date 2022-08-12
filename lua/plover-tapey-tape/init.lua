@@ -4,7 +4,8 @@ local tapey_tape_file = utils.get_tapey_tape_filename()
 -- TODO
 -- Add close function: this will need to close the open buffer and stop the the watching
 -- Add autocommand to run the stop function if the buffer is closed without running command
--- Add setup function with config options
+-- Add fix for cwd issues. it should not change to Plover directory (only affects those with a plugin like I'm using of vim rooter.
+-- Add way to make file updates not show that the file is being written
 
 local function update()
   -- Using normal file read
@@ -33,7 +34,13 @@ local function update()
   TapeyTape = line
 end
 
-local function open_tapey_tape()
+local function open_tapey_tape(open_method)
+  local opts = require('plover-tapey-tape.opts')
+
+  if not open_method then
+    open_method = 'split'
+  end
+
   local current_window = vim.api.nvim_get_current_win()
 
   local tapey_tape_file_in_open_tapey_tape = io.open(tapey_tape_file)
@@ -41,11 +48,16 @@ local function open_tapey_tape()
     return
   end
 
-  vim.cmd([[split ]] .. tapey_tape_file)
-  local height = 3
+  vim.cmd(open_method .. ' ' .. tapey_tape_file)
   tapey_tape_buffer_number = vim.api.nvim_win_get_buf(0)
   tapey_tape_window_number = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_height(tapey_tape_window_number, height)
+
+  if open_method == 'split' then
+    vim.api.nvim_win_set_height(tapey_tape_window_number, opts.vertical_split_height)
+  elseif open_method == 'vsplit' then
+    vim.api.nvim_win_set_width(tapey_tape_window_number, utils.detect_tapey_tape_line_width())
+  end
+
   watch_tapey_tape_for_changes(tapey_tape_buffer_number, tapey_tape_file)
   vim.api.nvim_set_current_win(current_window)
 end
