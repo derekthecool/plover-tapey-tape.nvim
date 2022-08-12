@@ -1,3 +1,17 @@
+---Setup function, takes default values from the module plover-tapey-tape.opts
+---@param user_opts table|nil
+---@return table
+local function setup(user_opts)
+  if user_opts ~= nil then
+    for k, v in pairs(user_opts) do
+      require('plover-tapey-tape.opts')[k] = v
+    end
+  end
+
+  -- Return config table
+  return (require('plover-tapey-tape.opts'))
+end
+
 -- Helpful command to run process and get exit code, stdout, and stderr
 -- https://stackoverflow.com/a/42644964
 ---@param command string
@@ -41,7 +55,6 @@ end
 
 --- Function to autodetect the location of the file tapey_tape.txt. Supported on
 --- windows, mac, Linux and WSL.
----@return string|nil
 local function get_tapey_tape_filename()
   local tapey_tape_name = 'tapey_tape.txt'
 
@@ -93,6 +106,7 @@ local function get_tapey_tape_filename()
 end
 
 return {
+  setup = setup,
   execute_command = execute_command,
   get_tapey_tape_filename = get_tapey_tape_filename,
 }
