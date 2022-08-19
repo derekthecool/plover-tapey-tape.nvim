@@ -18,4 +18,4 @@ TODO
 
 ## Screenshots
 
-TODO
+![Status line and vertical split](./images/plover-tapey-tape.nvim-screenshot.jpg)
