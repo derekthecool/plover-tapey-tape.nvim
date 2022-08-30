@@ -46,11 +46,17 @@ end
 --- Function to check if a file exists - from stackoverflow: https://stackoverflow.com/a/4991602
 --- @return boolean
 local function file_exists(name)
-  local f = io.open(name, 'r')
-  if f ~= nil then
-    io.close(f)
-    return true
+  if type(name) == 'string' then
+    local f = io.open(name, 'r')
+    if f ~= nil then
+      io.close(f)
+      return true
+    else
+      return false
+    end
   else
+    -- Return false if type is not a string
+    error("If function file_exists, expected argument 'name' to be a string, got: "  .. type(name))
     return false
   end
 end
@@ -60,19 +66,12 @@ end
 local function get_tapey_tape_filename()
   local tapey_tape_name = 'tapey_tape.txt'
 
-  -- E5108: Error executing lua ...t\plover-tapey-tape.nvim/lua\plover-tapey-tape\utils.lua:63: attempt to concatenate a nil value
-  -- stack traceback:
-  --         ...t\plover-tapey-tape.nvim/lua\plover-tapey-tape\utils.lua:63: in function 'get_tapey_tape_filename'
-  --         ...rt\plover-tapey-tape.nvim/lua\plover-tapey-tape\init.lua:2: in main chunk
-  --         [C]: in function 'require'
-  --         [string ":lua"]:1: in main chunk
-
   -- Check for known locations on window, mac, Linux and WSL Linux
   if vim.fn.has('linux') then
     local home = os.getenv('HOME')
     if home ~= nil then
       local LinuxFileName = home .. '/.config/plover/' .. tapey_tape_name
-      if file_exists(LinuxFileName) then
+      if LinuxFileName ~= nil and file_exists(LinuxFileName) then
         return LinuxFileName
       end
 
@@ -98,7 +97,7 @@ local function get_tapey_tape_filename()
     if mac_filename ~= nil then
       mac_filename = mac_filename .. '/Library/Application Support/plover/' .. tapey_tape_name
     end
-    if file_exists(mac_filename) then
+    if mac_filename ~= nil and file_exists(mac_filename) then
       return mac_filename
     end
   end
