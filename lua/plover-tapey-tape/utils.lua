@@ -8,6 +8,8 @@ local function setup(user_opts)
     end
   end
 
+  require('plover-tapey-tape').start()
+
   -- Return config table
   return (require('plover-tapey-tape.opts'))
 end
@@ -58,22 +60,34 @@ end
 local function get_tapey_tape_filename()
   local tapey_tape_name = 'tapey_tape.txt'
 
+  -- E5108: Error executing lua ...t\plover-tapey-tape.nvim/lua\plover-tapey-tape\utils.lua:63: attempt to concatenate a nil value
+  -- stack traceback:
+  --         ...t\plover-tapey-tape.nvim/lua\plover-tapey-tape\utils.lua:63: in function 'get_tapey_tape_filename'
+  --         ...rt\plover-tapey-tape.nvim/lua\plover-tapey-tape\init.lua:2: in main chunk
+  --         [C]: in function 'require'
+  --         [string ":lua"]:1: in main chunk
+
   -- Check for known locations on window, mac, Linux and WSL Linux
   if vim.fn.has('linux') then
-    local LinuxFileName = os.getenv('HOME') .. '/.config/plover/' .. tapey_tape_name
-    if file_exists(LinuxFileName) then
-      return LinuxFileName
-    elseif vim.fn.has('wsl') then
-      local output = execute_command([[powershell.exe -noprofile -command '$env:LOCALAPPDATA']])
-      if output.exit == 0 and output.stdout ~= nil then
-        output.stdout, _ = string.gsub(output.stdout, '\r\n', '')
+    local home = os.getenv('HOME')
+    if home ~= nil then
+      local LinuxFileName = home .. '/.config/plover/' .. tapey_tape_name
+      if file_exists(LinuxFileName) then
+        return LinuxFileName
+      end
 
-        -- Create the file path and do necessary conversions
-        local wsl_filename = output.stdout .. '/plover/plover/' .. tapey_tape_name
-        wsl_filename = wsl_filename:gsub('C:', '/mnt/c')
-        wsl_filename = wsl_filename:gsub('\\', '/')
-        if wsl_filename ~= nil and file_exists(wsl_filename) then
-          return wsl_filename
+      if vim.fn.has('wsl') then
+        local output = execute_command([[powershell.exe -noprofile -command '$env:LOCALAPPDATA']])
+        if output.exit == 0 and output.stdout ~= nil then
+          output.stdout, _ = string.gsub(output.stdout, '\r\n', '')
+
+          -- Create the file path and do necessary conversions
+          local wsl_filename = output.stdout .. '/plover/plover/' .. tapey_tape_name
+          wsl_filename = wsl_filename:gsub('C:', '/mnt/c')
+          wsl_filename = wsl_filename:gsub('\\', '/')
+          if wsl_filename ~= nil and file_exists(wsl_filename) then
+            return wsl_filename
+          end
         end
       end
     end
@@ -127,9 +141,31 @@ local function detect_tapey_tape_line_width()
   return 50
 end
 
+local function block_auto_change_directory(mode)
+  if type(mode) == string then
+    if mode == 'start' then
+      -- Handle vim-rooter
+      if vim.g.loaded_rooter ~= nil then
+        vim.g.rooter_manual_only = 1
+        vim.cmd([[RooterToggle]])
+      end
+
+      -- Make sure autochdir is off
+      vim.go.autochdir = false
+    elseif mode == 'stop' then
+      -- TODO: reset vim rooter and autochdir if needed
+      if vim.g.loaded_rooter ~= nil then
+        vim.g.rooter_manual_only = 0
+        vim.cmd([[Rooter]])
+      end
+    end
+  end
+end
+
 return {
   setup = setup,
   execute_command = execute_command,
   get_tapey_tape_filename = get_tapey_tape_filename,
   detect_tapey_tape_line_width = detect_tapey_tape_line_width,
+  block_auto_change_directory = block_auto_change_directory,
 }

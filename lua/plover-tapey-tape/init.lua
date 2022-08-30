@@ -52,11 +52,16 @@ local function open_tapey_tape(open_method)
   tapey_tape_buffer_number = vim.api.nvim_win_get_buf(0)
   tapey_tape_window_number = vim.api.nvim_get_current_win()
 
+  -- Save current CWD so auto root plugins don't mess it up
+  utils.block_auto_change_directory('start')
+
   if open_method == 'split' then
     vim.api.nvim_win_set_height(tapey_tape_window_number, opts.vertical_split_height)
   elseif open_method == 'vsplit' then
     vim.api.nvim_win_set_width(tapey_tape_window_number, utils.detect_tapey_tape_line_width())
   end
+
+  utils.block_auto_change_directory('stop')
 
   watch_tapey_tape_for_changes(tapey_tape_buffer_number, tapey_tape_file)
   vim.api.nvim_set_current_win(current_window)
