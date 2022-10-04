@@ -19,3 +19,7 @@ TODO
 ## Screenshots
 
 ![Status line and vertical split](./images/plover-tapey-tape.nvim-screenshot.jpg)
+
+## Implemented Features
+
+- [ ] Autocommand to close file watcher when neovim is closing
