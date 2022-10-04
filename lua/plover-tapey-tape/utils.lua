@@ -140,7 +140,7 @@ local function detect_tapey_tape_line_width()
             end
 
             file:close()
-            return maximum_line_length
+            return maximum_line_length + 10
         end
     end
 

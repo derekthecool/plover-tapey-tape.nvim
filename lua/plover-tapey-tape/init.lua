@@ -92,7 +92,7 @@ local function open_tapey_tape(open_method)
     local opts = require('plover-tapey-tape.opts')
 
     if not open_method then
-        open_method = 'split'
+        open_method = 'vsplit'
     end
 
     local buffer_name = 'TapeyTape'

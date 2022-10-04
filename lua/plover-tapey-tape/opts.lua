@@ -4,7 +4,16 @@
 return {
     filepath = 'auto',
     vertical_split_height = 3,
-    horizontal_split_width = 42,
+    horizontal_split_width = 54,
+    suggestion_notifications = {
+        enabled = true,
+        match_function = function(text)
+            local suggestions = {}
+            for matches in text:gmatch('>+%w') do
+            end
+            return suggestions
+        end,
+    },
     status_line_setup = {
         enabled = true,
         additional_filter = '(|.-|)',
