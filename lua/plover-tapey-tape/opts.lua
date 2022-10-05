@@ -3,8 +3,10 @@
 ---@return table
 return {
     filepath = 'auto',
+    open_method = 'vsplit',
     vertical_split_height = 3,
     horizontal_split_width = 54,
+    steno_capture = '|(.-)|',
     suggestion_notifications = {
         enabled = true,
         match_function = function(text)

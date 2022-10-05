@@ -1,3 +1,5 @@
+local opts = require('plover-tapey-tape.opts')
+
 ---Setup function, takes default values from the module plover-tapey-tape.opts
 ---@param user_opts table|nil
 ---@return table
@@ -24,7 +26,6 @@ local function setup(user_opts)
 end
 
 local function read_last_line_of_tapey_tape()
-    local opts = require('plover-tapey-tape.opts')
     local tapey_tape_file = ''
 
     if opts.filepath == 'auto' then
@@ -66,49 +67,6 @@ local function read_last_line_of_tapey_tape()
     end
 
     return line
-end
-
-local function update_display()
-    --[[
-#### # #####
-STPH * FPLTD
-SKWR * RBGSZ
-  AO   EU
-
-+-+-+-+-+-+-+-+-+-+-+
-|#|#|#|#|#|#|#|#|#|#|
-+-+-+-+-+-+-+-+-+-+-+
-|S|T|P|H|*|F|P|L|T|D|
-+-+-+-+-+-+-+-+-+-+-+
-|S|K|W|R|*|R|B|G|S|Z|
-+-+-+-+-+-+-+-+-+-+-+
-    |A|O| |E|U|
-    +-+-+ +-+-+
-
-#TPH * FPLTD
-SKWR * RBGSZ
-  AO   EU
-
-+-+-+-+-+-+-+-+-+-+-+
-|#|T|P|H|*|F|P|L|T|D|
-+-+-+-+-+-+-+-+-+-+-+
-|S|K|W|R|*|R|B|G|S|Z|
-+-+-+-+-+-+-+-+-+-+-+
-    |A|O| |E|U|
-    +-+-+ +-+-+
-
-#STPH * FPLTD
-#SKWR * RBGSZ
-   AO   EU
-
-+-+-+-+-+-+-+-+-+-+-+-+
-|#|S|T|P|H|*|F|P|L|T|D|
-+-+-+-+-+-+-+-+-+-+-+-+
-|#|S|K|W|R|*|R|B|G|S|Z|
-+-+-+-+-+-+-+-+-+-+-+-+
-      |A|O| |E|U|
-      +-+-+ +-+-+
-]]
 end
 
 -- Helpful command to run process and get exit code, stdout, and stderr
@@ -236,12 +194,198 @@ local function detect_tapey_tape_line_width()
     return 50
 end
 
+local function scroll_buffer_to_bottom()
+    local function win_exists(win_number)
+        local found = false
+        for _, win in ipairs(vim.api.nvim_list_wins()) do
+            if win == win_number then
+                found = true
+            end
+        end
+        return found
+    end
+
+    if Tapey_tape_window_number ~= nil and win_exists(Tapey_tape_window_number) then
+        vim.api.nvim_win_set_cursor(
+            Tapey_tape_window_number,
+            { vim.api.nvim_buf_line_count(Tapey_tape_buffer_number), 0 }
+        )
+    end
+end
+
+local function open_window()
+    TapeyTapeWindowOpen = true
+
+    local utils = require('plover-tapey-tape.utils')
+
+    local buffer_name = 'TapeyTape'
+
+    local buffer_exists = false
+    for _, value in pairs(vim.fn.getbufinfo()) do
+        local name_adjust = value.name:match(buffer_name)
+
+        if name_adjust ~= nil then
+            buffer_exists = true
+        end
+    end
+
+    if not buffer_exists then
+        Tapey_tape_buffer_number = vim.api.nvim_create_buf(true, true)
+        vim.api.nvim_buf_set_name(Tapey_tape_buffer_number, buffer_name)
+    end
+
+    local open_method = opts.open_method
+
+    -- TODO: return to buffer user was in before opening tape buffer
+    if open_method == 'split' then
+        vim.cmd([[sbuffer ]] .. buffer_name)
+        Tapey_tape_window_number = vim.api.nvim_get_current_win()
+        vim.api.nvim_win_set_height(Tapey_tape_window_number, opts.vertical_split_height)
+    elseif open_method == 'vsplit' then
+        vim.cmd([[vertical sbuffer ]] .. buffer_name)
+        Tapey_tape_window_number = vim.api.nvim_get_current_win()
+        local width = utils.detect_tapey_tape_line_width()
+        vim.api.nvim_win_set_width(Tapey_tape_window_number, width)
+    end
+
+    -- Set window options
+    vim.api.nvim_win_set_option(Tapey_tape_window_number, 'number', false)
+    vim.api.nvim_win_set_option(Tapey_tape_window_number, 'relativenumber', false)
+    vim.api.nvim_win_set_option(Tapey_tape_window_number, 'signcolumn', 'auto')
+end
+
+local function close_window()
+    TapeyTapeWindowOpen = false
+    vim.api.nvim_buf_delete(Tapey_tape_buffer_number, { force = true })
+    Tapey_tape_buffer_number = nil
+    Tapey_tape_window_number = nil
+    -- vim.api.nvim_win_close(Tapey_tape_window_number, true)
+end
+
+local function update_display(line)
+    --[[
+#### # #####
+STPH * FPLTD
+SKWR * RBGSZ
+  AO   EU
+
++-+-+-+-+-+-+-+-+-+-+
+|#|#|#|#|#|#|#|#|#|#|
++-+-+-+-+-+-+-+-+-+-+
+|S|T|P|H|*|F|P|L|T|D|
++-+-+-+-+-+-+-+-+-+-+
+|S|K|W|R|*|R|B|G|S|Z|
++-+-+-+-+-+-+-+-+-+-+
+    |A|O| |E|U|
+    +-+-+ +-+-+
+
+#TPH * FPLTD
+SKWR * RBGSZ
+  AO   EU
+
++-+-+-+-+-+-+-+-+-+-+
+|#|T|P|H|*|F|P|L|T|D|
++-+-+-+-+-+-+-+-+-+-+
+|S|K|W|R|*|R|B|G|S|Z|
++-+-+-+-+-+-+-+-+-+-+
+    |A|O| |E|U|
+    +-+-+ +-+-+
+
+#STPH * FPLTD
+#SKWR * RBGSZ
+   AO   EU
+
++-+-+-+-+-+-+-+-+-+-+-+
+|#|S|T|P|H|*|F|P|L|T|D|
++-+-+-+-+-+-+-+-+-+-+-+
+|#|S|K|W|R|*|R|B|G|S|Z|
++-+-+-+-+-+-+-+-+-+-+-+
+      |A|O| |E|U|
+      +-+-+ +-+-+
+]]
+    -- Get filter and always escape '%' for status line
+    if opts.status_line_setup.enabled then
+        local filter = opts.status_line_setup.additional_filter or '(|.-|)'
+        local newTapeyTapeLine = (line:gsub('%%', '%%%%')):match(filter)
+        TapeyTape = newTapeyTapeLine
+    end
+
+    if Tapey_tape_window_number ~= nil and Tapey_tape_buffer_number ~= nil then
+        vim.api.nvim_buf_set_lines(Tapey_tape_buffer_number, -1, -1, false, { line })
+    end
+end
+
+local steno_lookup = {
+    number = 1,
+    S1 = 2,
+    T1 = 3,
+    K = 4,
+    P1 = 5,
+    W = 6,
+    H = 7,
+    R1 = 8,
+    A = 9,
+    O = 10,
+    star = 11,
+    E = 12,
+    U = 13,
+    F = 14,
+    R2 = 15,
+    P2 = 16,
+    B = 17,
+    L = 18,
+    G = 19,
+    T2 = 20,
+    S2 = 21,
+    D = 22,
+    Z = 23,
+}
+
+local function parse_log_line(line)
+    if line == nil then
+        return nil
+    end
+
+    local parsed_line = {}
+    parsed_line.line = line
+    parsed_line.steno_keys = line:match(opts.steno_capture)
+    if parsed_line.steno_keys ~= nil then
+        if #parsed_line.steno_keys ~= 23 then
+            vim.notify_once(
+                'Steno keys could not be matched, length is not equal to 23 for steno string',
+                vim.log.levels.INFO,
+                { title = 'plover-tapey-tape.nvim' }
+            )
+        end
+        parsed_line.steno = {}
+        for match in parsed_line.steno_keys:gmatch('.') do
+            table.insert(parsed_line.steno, match)
+        end
+
+        -- local suggestion_match = parsed_line.steno_keys:match('.*>>(.*)')
+        local suggestion_match = line:match('>+(.*)')
+        if suggestion_match ~= nil then
+            parsed_line.suggestions = {}
+            for suggestion in suggestion_match:gmatch('%w+') do
+                table.insert(parsed_line.suggestions, suggestion)
+            end
+        end
+    end
+
+    return parsed_line
+end
+
 return {
     setup = setup,
-    update_display = update_display,
     read_last_line_of_tapey_tape = read_last_line_of_tapey_tape,
     execute_command = execute_command,
     get_tapey_tape_filename = get_tapey_tape_filename,
     detect_tapey_tape_line_width = detect_tapey_tape_line_width,
     file_exists = file_exists,
+    scroll_buffer_to_bottom = scroll_buffer_to_bottom,
+    open_window = open_window,
+    close_window = close_window,
+    update_display = update_display,
+    parse_log_line = parse_log_line,
+    steno_lookup = steno_lookup,
 }
