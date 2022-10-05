@@ -23,6 +23,51 @@ local function setup(user_opts)
     return (require('plover-tapey-tape.opts'))
 end
 
+local function read_last_line_of_tapey_tape()
+    local opts = require('plover-tapey-tape.opts')
+    local tapey_tape_file = ''
+
+    if opts.filepath == 'auto' then
+        tapey_tape_file = require('plover-tapey-tape.utils').get_tapey_tape_filename()
+        if require('plover-tapey-tape.utils').file_exists(tapey_tape_file) then
+            require('plover-tapey-tape.opts').filepath = tapey_tape_file
+        end
+    else
+        tapey_tape_file = opts.filepath
+    end
+
+    if not tapey_tape_file then
+        return
+    end
+
+    local tapey_tape_file_handle = io.open(tapey_tape_file)
+
+    if not tapey_tape_file_handle then
+        return
+    end
+
+    -- Go to end of the file and then backwards by an offset
+    tapey_tape_file_handle:seek('end', -200)
+    local line = ''
+    for _ = 1, 10 do
+        local current_line = tapey_tape_file_handle:read('l')
+        if current_line then
+            current_line = current_line
+            if current_line ~= nil then
+                line = current_line
+            end
+        else
+            break
+        end
+    end
+
+    if tapey_tape_file_handle then
+        tapey_tape_file_handle:close()
+    end
+
+    return line
+end
+
 local function update_display()
     --[[
 #### # #####
@@ -194,6 +239,7 @@ end
 return {
     setup = setup,
     update_display = update_display,
+    read_last_line_of_tapey_tape = read_last_line_of_tapey_tape,
     execute_command = execute_command,
     get_tapey_tape_filename = get_tapey_tape_filename,
     detect_tapey_tape_line_width = detect_tapey_tape_line_width,

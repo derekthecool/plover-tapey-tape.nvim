@@ -1,76 +1,7 @@
 local utils = require('plover-tapey-tape.utils')
-local tapey_tape_file = utils.get_tapey_tape_filename()
 
---[[
-#### # #####
-STPH * FPLTD
-SKWR * RBGSZ
-  AO   EU
-
-+-+-+-+-+-+-+-+-+-+-+
-|#|#|#|#|#|#|#|#|#|#|
-+-+-+-+-+-+-+-+-+-+-+
-|S|T|P|H|*|F|P|L|T|D|
-+-+-+-+-+-+-+-+-+-+-+
-|S|K|W|R|*|R|B|G|S|Z|
-+-+-+-+-+-+-+-+-+-+-+
-    |A|O| |E|U|
-    +-+-+ +-+-+
-
-#TPH * FPLTD
-SKWR * RBGSZ
-  AO   EU
-
-+-+-+-+-+-+-+-+-+-+-+
-|#|T|P|H|*|F|P|L|T|D|
-+-+-+-+-+-+-+-+-+-+-+
-|S|K|W|R|*|R|B|G|S|Z|
-+-+-+-+-+-+-+-+-+-+-+
-    |A|O| |E|U|
-    +-+-+ +-+-+
-
-#STPH * FPLTD
-#SKWR * RBGSZ
-   AO   EU
-
-+-+-+-+-+-+-+-+-+-+-+-+
-|#|S|T|P|H|*|F|P|L|T|D|
-+-+-+-+-+-+-+-+-+-+-+-+
-|#|S|K|W|R|*|R|B|G|S|Z|
-+-+-+-+-+-+-+-+-+-+-+-+
-      |A|O| |E|U|
-      +-+-+ +-+-+
-]]
 local function update()
-    local tapey_tape_filename_in_update = tapey_tape_file
-    if not tapey_tape_filename_in_update then
-        return
-    end
-    local tapey_tape_file_in_update = io.open(tapey_tape_filename_in_update)
-
-    if not tapey_tape_file_in_update then
-        return
-    end
-
-    -- Go to end of the file and then backwards by an offset
-    tapey_tape_file_in_update:seek('end', -200)
-    local line = ''
-    for _ = 1, 10 do
-        local current_line = tapey_tape_file_in_update:read('l')
-        if current_line then
-            current_line = current_line
-            if current_line ~= nil then
-                line = current_line
-            end
-        else
-            break
-        end
-    end
-
-    if tapey_tape_file_in_update then
-        tapey_tape_file_in_update:close()
-    end
-
+    local line = utils.read_last_line_of_tapey_tape()
     if line ~= Previous_line then
         Previous_line = line
 
