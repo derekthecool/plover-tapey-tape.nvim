@@ -23,6 +23,49 @@ local function setup(user_opts)
     return (require('plover-tapey-tape.opts'))
 end
 
+local function update_display()
+    --[[
+#### # #####
+STPH * FPLTD
+SKWR * RBGSZ
+  AO   EU
+
++-+-+-+-+-+-+-+-+-+-+
+|#|#|#|#|#|#|#|#|#|#|
++-+-+-+-+-+-+-+-+-+-+
+|S|T|P|H|*|F|P|L|T|D|
++-+-+-+-+-+-+-+-+-+-+
+|S|K|W|R|*|R|B|G|S|Z|
++-+-+-+-+-+-+-+-+-+-+
+    |A|O| |E|U|
+    +-+-+ +-+-+
+
+#TPH * FPLTD
+SKWR * RBGSZ
+  AO   EU
+
++-+-+-+-+-+-+-+-+-+-+
+|#|T|P|H|*|F|P|L|T|D|
++-+-+-+-+-+-+-+-+-+-+
+|S|K|W|R|*|R|B|G|S|Z|
++-+-+-+-+-+-+-+-+-+-+
+    |A|O| |E|U|
+    +-+-+ +-+-+
+
+#STPH * FPLTD
+#SKWR * RBGSZ
+   AO   EU
+
++-+-+-+-+-+-+-+-+-+-+-+
+|#|S|T|P|H|*|F|P|L|T|D|
++-+-+-+-+-+-+-+-+-+-+-+
+|#|S|K|W|R|*|R|B|G|S|Z|
++-+-+-+-+-+-+-+-+-+-+-+
+      |A|O| |E|U|
+      +-+-+ +-+-+
+]]
+end
+
 -- Helpful command to run process and get exit code, stdout, and stderr
 -- https://stackoverflow.com/a/42644964
 ---@param command string
@@ -150,6 +193,7 @@ end
 
 return {
     setup = setup,
+    update_display = update_display,
     execute_command = execute_command,
     get_tapey_tape_filename = get_tapey_tape_filename,
     detect_tapey_tape_line_width = detect_tapey_tape_line_width,

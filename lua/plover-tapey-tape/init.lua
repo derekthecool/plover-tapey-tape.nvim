@@ -1,6 +1,46 @@
 local utils = require('plover-tapey-tape.utils')
 local tapey_tape_file = utils.get_tapey_tape_filename()
 
+--[[
+#### # #####
+STPH * FPLTD
+SKWR * RBGSZ
+  AO   EU
+
++-+-+-+-+-+-+-+-+-+-+
+|#|#|#|#|#|#|#|#|#|#|
++-+-+-+-+-+-+-+-+-+-+
+|S|T|P|H|*|F|P|L|T|D|
++-+-+-+-+-+-+-+-+-+-+
+|S|K|W|R|*|R|B|G|S|Z|
++-+-+-+-+-+-+-+-+-+-+
+    |A|O| |E|U|
+    +-+-+ +-+-+
+
+#TPH * FPLTD
+SKWR * RBGSZ
+  AO   EU
+
++-+-+-+-+-+-+-+-+-+-+
+|#|T|P|H|*|F|P|L|T|D|
++-+-+-+-+-+-+-+-+-+-+
+|S|K|W|R|*|R|B|G|S|Z|
++-+-+-+-+-+-+-+-+-+-+
+    |A|O| |E|U|
+    +-+-+ +-+-+
+
+#STPH * FPLTD
+#SKWR * RBGSZ
+   AO   EU
+
++-+-+-+-+-+-+-+-+-+-+-+
+|#|S|T|P|H|*|F|P|L|T|D|
++-+-+-+-+-+-+-+-+-+-+-+
+|#|S|K|W|R|*|R|B|G|S|Z|
++-+-+-+-+-+-+-+-+-+-+-+
+      |A|O| |E|U|
+      +-+-+ +-+-+
+]]
 local function update()
     local tapey_tape_filename_in_update = tapey_tape_file
     if not tapey_tape_filename_in_update then
