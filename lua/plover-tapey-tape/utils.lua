@@ -21,6 +21,10 @@ local function setup(user_opts)
 
     require('plover-tapey-tape').start()
 
+    vim.api.nvim_set_hl(0, 'FancyStenoBorder', { fg = '#6c25be', bg = '#39028d' })
+    vim.api.nvim_set_hl(0, 'FancyStenoActive', { fg = '#222222', bg = '#22ffff', bold = true, italic = true })
+    vim.api.nvim_set_hl(0, 'FancyStenoInactive', { bg = '#000000' })
+
     -- Return config table
     return (require('plover-tapey-tape.opts'))
 end
@@ -315,30 +319,101 @@ SKWR * RBGSZ
     end
 end
 
+local function set_tapey_tape_extmark(row, col, text, highlight)
+    local namespace = vim.api.nvim_create_namespace('TapeyTape')
+    vim.api.nvim_buf_set_extmark(Tapey_tape_buffer_number, namespace, row, col, {
+        virt_text_pos = 'overlay',
+        virt_text = { { text, highlight } },
+    })
+end
+
+local function find_char_highlight(char, parsed_steno_table)
+    local highlight = ''
+    if char:match('[%+%-%| ]') then
+        highlight = 'Title'
+    else
+        local key = char:match('[A-Z#*]')
+
+        -- Check if key is in the parsed steno table
+        if key ~= nil and char:match('[STG]') then
+            highlight = 'FancyStenoActive'
+        else
+            highlight = 'Folded'
+        end
+    end
+    return highlight
+end
+
+local function draw_steno_keyboard_extmark(parsed_steno_table)
+    local steno_keyboard_layout = require('plover-tapey-tape.steno-keyboard-layout')
+    local lookup = require('plover-tapey-tape.steno-keyboard-layout.utils').steno_lookup
+    local left_half = 'left_half'
+    local right_half = 'right_half'
+
+    local lines_in_file = vim.api.nvim_buf_line_count(Tapey_tape_buffer_number)
+    local window_height = vim.api.nvim_win_get_height(Tapey_tape_window_number)
+    local window_width = vim.api.nvim_win_get_width(Tapey_tape_window_number)
+
+    local start_column = 0
+    local start_row = math.floor(lines_in_file - window_height)
+    if start_row < 0 then
+        start_row = 0
+    end
+    local current_row = start_row
+    for steno_row = 1, 3 do
+        set_tapey_tape_extmark(current_row, start_column, steno_keyboard_layout.row_border[steno_row], 'Title')
+
+        current_row = current_row + 1
+
+        for column, steno_key in ipairs(steno_keyboard_layout[left_half][steno_row]) do
+          local highlight_for_key = find_char_highlight(steno_key)
+          -- TODO: get function to check highlight working
+          -- set_tapey_tape_extmark(column, current_row, , )
+        end
+
+        for column, steno_key in ipairs(steno_keyboard_layout[right_half][steno_row]) do
+        end
+
+        current_row = current_row + 1
+    end
+
+    -- Draw last row border
+    set_tapey_tape_extmark(
+        current_row,
+        start_column,
+        steno_keyboard_layout.row_border[#steno_keyboard_layout.row_border],
+        'Title'
+    )
+end
+
 local steno_lookup = {
-    number = 1,
-    S1 = 2,
-    T1 = 3,
-    K = 4,
-    P1 = 5,
-    W = 6,
-    H = 7,
-    R1 = 8,
-    A = 9,
-    O = 10,
-    star = 11,
-    E = 12,
-    U = 13,
-    F = 14,
-    R2 = 15,
-    P2 = 16,
-    B = 17,
-    L = 18,
-    G = 19,
-    T2 = 20,
-    S2 = 21,
-    D = 22,
-    Z = 23,
+    left_half = {
+        ['#'] = 1,
+        ['S'] = 2,
+        ['T'] = 3,
+        ['K'] = 4,
+        ['P'] = 5,
+        ['W'] = 6,
+        ['H'] = 7,
+        ['R'] = 8,
+        ['A'] = 9,
+        ['O'] = 10,
+        ['*'] = 11,
+    },
+    right_half = {
+        ['E'] = 12,
+        ['U'] = 13,
+        ['F'] = 14,
+        ['R'] = 15,
+        ['P'] = 16,
+        ['B'] = 17,
+        ['L'] = 18,
+        ['G'] = 19,
+        ['T'] = 20,
+        ['S'] = 21,
+        ['D'] = 22,
+        ['Z'] = 23,
+    },
 }
 
 local function parse_log_line(line)
@@ -387,4 +462,6 @@ return {
     update_display = update_display,
     parse_log_line = parse_log_line,
     steno_lookup = steno_lookup,
+    draw_steno_keyboard_extmark = draw_steno_keyboard_extmark,
+    find_char_highlight = find_char_highlight,
 }

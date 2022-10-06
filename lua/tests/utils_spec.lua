@@ -117,5 +117,13 @@ describe('tapey-tape-util tests --', function()
         end
     end)
 
+    it('find_char_highlight', function()
+        local line = [[   ++ | S  P                  | and >>SKPUP]]
+        -- local parsed_line = util.parse_log_line(line)
+        -- local steno_lookup = util.steno_lookup
+        -- local highlight = util.find_char_highlight(parsed_line.steno[1], parsed_line)
+        
+    end)
+
     --
 end)
