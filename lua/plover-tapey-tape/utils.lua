@@ -362,8 +362,7 @@ local function parse_log_line(line)
             table.insert(parsed_line.steno, match)
         end
 
-        -- local suggestion_match = parsed_line.steno_keys:match('.*>>(.*)')
-        local suggestion_match = line:match('>+(.*)')
+        local suggestion_match = line:match(' >+([A-Z0-9 ]+)$')
         if suggestion_match ~= nil then
             parsed_line.suggestions = {}
             for suggestion in suggestion_match:gmatch('%w+') do

@@ -97,5 +97,25 @@ describe('tapey-tape-util tests --', function()
         assert.are.same(1, #output.suggestions)
     end)
 
+    it('parse_log_line capture multiple suggestions', function()
+        local line =
+            [[ ++ |                    S  | *documents 2022-10-05 16:18:55.408 >TKAOUPLS TKAOUPLTS TKAOUPLGTS TKAOUPLTSZ]]
+        local output = util.parse_log_line(line)
+        print(vim.inspect(output))
+        assert.are.same(4, #output.suggestions)
+    end)
+
+    it('parse_log_line capture ignorable lines with a > char', function()
+        local lines = {
+            [[+++++ | S K WH     U R B G    | {^} > {^} 2022-10-05 15:58:39.761]],
+        }
+
+        for _, line in ipairs(lines) do
+            local output = util.parse_log_line(line)
+            print(vim.inspect(output))
+            assert.are.same(nil, output.suggestions)
+        end
+    end)
+
     --
 end)
