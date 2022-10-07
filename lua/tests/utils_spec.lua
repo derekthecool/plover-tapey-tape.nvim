@@ -117,12 +117,34 @@ describe('tapey-tape-util tests --', function()
         end
     end)
 
-    it('find_char_highlight', function()
+    it('parse_log_line capture multiple suggestions with a list', function()
+        local lines = {
+            [[++++ |    P H  O    RPB G    | morning 2022-10-07 09:44:02.881 >>TKPWAOPL TPWORPBG TKPWORPBG TKPWAORPBG]],
+        }
+
+        for _, line in ipairs(lines) do
+            local output = util.parse_log_line(line)
+            print(vim.inspect(output))
+            assert.are.not_same(nil, output.suggestions)
+        end
+    end)
+
+    it('find_char_highlight highlight for key pressed', function()
         local line = [[   ++ | S  P                  | and >>SKPUP]]
-        -- local parsed_line = util.parse_log_line(line)
-        -- local steno_lookup = util.steno_lookup
-        -- local highlight = util.find_char_highlight(parsed_line.steno[1], parsed_line)
-        
+        local parsed_line = util.parse_log_line(line)
+        local highlight = util.find_char_highlight('P', parsed_line, 'left_half')
+
+        -- Check to make sure the key is highlighted in the way that means it was pressed
+        assert.are.same('FancyStenoActive', highlight)
+    end)
+
+    it('find_char_highlight highlight for key not pressed', function()
+        local line = [[   ++ | S  P                  | and >>SKPUP]]
+        local parsed_line = util.parse_log_line(line)
+        local highlight = util.find_char_highlight('P', parsed_line, 'right_half')
+
+        -- Check to make sure the key is highlighted in the way that means it was pressed
+        assert.are.same('Folded', highlight)
     end)
 
     --

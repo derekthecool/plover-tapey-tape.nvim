@@ -267,46 +267,6 @@ local function close_window()
 end
 
 local function update_display(line)
-    --[[
-#### # #####
-STPH * FPLTD
-SKWR * RBGSZ
-  AO   EU
-
-+-+-+-+-+-+-+-+-+-+-+
-|#|#|#|#|#|#|#|#|#|#|
-+-+-+-+-+-+-+-+-+-+-+
-|S|T|P|H|*|F|P|L|T|D|
-+-+-+-+-+-+-+-+-+-+-+
-|S|K|W|R|*|R|B|G|S|Z|
-+-+-+-+-+-+-+-+-+-+-+
-    |A|O| |E|U|
-    +-+-+ +-+-+
-
-#TPH * FPLTD
-SKWR * RBGSZ
-  AO   EU
-
-+-+-+-+-+-+-+-+-+-+-+
-|#|T|P|H|*|F|P|L|T|D|
-+-+-+-+-+-+-+-+-+-+-+
-|S|K|W|R|*|R|B|G|S|Z|
-+-+-+-+-+-+-+-+-+-+-+
-    |A|O| |E|U|
-    +-+-+ +-+-+
-
-#STPH * FPLTD
-#SKWR * RBGSZ
-   AO   EU
-
-+-+-+-+-+-+-+-+-+-+-+-+
-|#|S|T|P|H|*|F|P|L|T|D|
-+-+-+-+-+-+-+-+-+-+-+-+
-|#|S|K|W|R|*|R|B|G|S|Z|
-+-+-+-+-+-+-+-+-+-+-+-+
-      |A|O| |E|U|
-      +-+-+ +-+-+
-]]
     -- Get filter and always escape '%' for status line
     if opts.status_line_setup.enabled then
         local filter = opts.status_line_setup.additional_filter or '(|.-|)'
@@ -314,47 +274,88 @@ SKWR * RBGSZ
         TapeyTape = newTapeyTapeLine
     end
 
+    local utils = require('plover-tapey-tape.utils')
+    local parsed_log_line = utils.parse_log_line(line)
+
+    -- if parsed_log_line.suggestions ~= nil then
+        vim.schedule_wrap(function()
+            local suggestion_text = vim.inspect(parsed_log_line.suggestions)
+            -- for _, suggestion in ipairs(parsed_log_line.suggestions) do
+            --     suggestion_text = suggestion_text .. '\n' .. suggestion
+            -- end
+            vim.notify(suggestion_text, vim.log.levels.INFO, { title = 'plover-tapey-tape.nvim suggestions' })
+        end)
+    -- end
+
     if Tapey_tape_window_number ~= nil and Tapey_tape_buffer_number ~= nil then
-        vim.api.nvim_buf_set_lines(Tapey_tape_buffer_number, -1, -1, false, { line })
+        if vim.api.nvim_buf_line_count(Tapey_tape_buffer_number) < 8 then
+            vim.api.nvim_buf_set_lines(Tapey_tape_buffer_number, -1, -1, false, { '', '', '', '', '', '', '', '' })
+        end
+        vim.api.nvim_buf_set_lines(Tapey_tape_buffer_number, -1, -1, false, { parsed_log_line.line })
+        utils.draw_steno_keyboard_extmark(parsed_log_line)
     end
 end
 
 local function set_tapey_tape_extmark(row, col, text, highlight)
     local namespace = vim.api.nvim_create_namespace('TapeyTape')
-    vim.api.nvim_buf_set_extmark(Tapey_tape_buffer_number, namespace, row, col, {
+    vim.api.nvim_buf_set_extmark(Tapey_tape_buffer_number, namespace, row, 0, {
+        virt_text_win_col = col,
         virt_text_pos = 'overlay',
         virt_text = { { text, highlight } },
     })
 end
 
-local function find_char_highlight(char, parsed_steno_table)
+---Function to determine what highlight the steno key should receive
+---@param char string should be a single character in length
+---@param parsed_steno_table table
+---@param steno_keyboard_side string
+---@return string
+local function find_char_highlight(char, parsed_steno_table, steno_keyboard_side)
     local highlight = ''
     if char:match('[%+%-%| ]') then
         highlight = 'Title'
     else
-        local key = char:match('[A-Z#*]')
+        local steno_key_has_been_pressed = false
+        for k, v in ipairs(parsed_steno_table.steno) do
+            if v == char then
+                if v:match('([STPR])') ~= nil and k < 10 and steno_keyboard_side == 'left_half' then
+                    steno_key_has_been_pressed = true
+                    break
+                elseif v:match('([STPR])') ~= nil and k > 10 and steno_keyboard_side == 'right_half' then
+                    steno_key_has_been_pressed = true
+                    break
+                elseif v:match('([^STPR])') ~= nil then
+                    steno_key_has_been_pressed = true
+                    break
+                end
+            end
+        end
 
-        -- Check if key is in the parsed steno table
-        if key ~= nil and char:match('[STG]') then
+        if steno_key_has_been_pressed then
             highlight = 'FancyStenoActive'
         else
             highlight = 'Folded'
         end
     end
+
     return highlight
 end
 
 local function draw_steno_keyboard_extmark(parsed_steno_table)
+    -- Clear old lines first
+    local namespace = vim.api.nvim_create_namespace('TapeyTape')
+    vim.api.nvim_buf_clear_namespace(Tapey_tape_buffer_number, namespace, 0, -1)
+
     local steno_keyboard_layout = require('plover-tapey-tape.steno-keyboard-layout')
-    local lookup = require('plover-tapey-tape.steno-keyboard-layout.utils').steno_lookup
     local left_half = 'left_half'
     local right_half = 'right_half'
 
     local lines_in_file = vim.api.nvim_buf_line_count(Tapey_tape_buffer_number)
     local window_height = vim.api.nvim_win_get_height(Tapey_tape_window_number)
     local window_width = vim.api.nvim_win_get_width(Tapey_tape_window_number)
+    local center_width = math.floor((window_width / 2) - #steno_keyboard_layout.left_half[1] - 1)
 
-    local start_column = 0
+    local start_column = center_width
     local start_row = math.floor(lines_in_file - window_height)
     if start_row < 0 then
         start_row = 0
@@ -366,12 +367,19 @@ local function draw_steno_keyboard_extmark(parsed_steno_table)
         current_row = current_row + 1
 
         for column, steno_key in ipairs(steno_keyboard_layout[left_half][steno_row]) do
-          local highlight_for_key = find_char_highlight(steno_key)
-          -- TODO: get function to check highlight working
-          -- set_tapey_tape_extmark(column, current_row, , )
+            local highlight_for_key = find_char_highlight(steno_key, parsed_steno_table, left_half)
+            set_tapey_tape_extmark(current_row, start_column + column - 1, steno_key, highlight_for_key)
         end
 
         for column, steno_key in ipairs(steno_keyboard_layout[right_half][steno_row]) do
+            local highlight_for_key = find_char_highlight(steno_key, parsed_steno_table, right_half)
+            local right_side_column_offset = #steno_keyboard_layout.left_half[1]
+            set_tapey_tape_extmark(
+                current_row,
+                start_column + column + right_side_column_offset - 1,
+                steno_key,
+                highlight_for_key
+            )
         end
 
         current_row = current_row + 1
@@ -387,33 +395,29 @@ local function draw_steno_keyboard_extmark(parsed_steno_table)
 end
 
 local steno_lookup = {
-    left_half = {
-        ['#'] = 1,
-        ['S'] = 2,
-        ['T'] = 3,
-        ['K'] = 4,
-        ['P'] = 5,
-        ['W'] = 6,
-        ['H'] = 7,
-        ['R'] = 8,
-        ['A'] = 9,
-        ['O'] = 10,
-        ['*'] = 11,
-    },
-    right_half = {
-        ['E'] = 12,
-        ['U'] = 13,
-        ['F'] = 14,
-        ['R'] = 15,
-        ['P'] = 16,
-        ['B'] = 17,
-        ['L'] = 18,
-        ['G'] = 19,
-        ['T'] = 20,
-        ['S'] = 21,
-        ['D'] = 22,
-        ['Z'] = 23,
-    },
+    '#',
+    'S',
+    'T',
+    'K',
+    'P',
+    'W',
+    'H',
+    'R',
+    'A',
+    'O',
+    '*',
+    'E',
+    'U',
+    'F',
+    'R',
+    'P',
+    'B',
+    'L',
+    'G',
+    'T',
+    'S',
+    'D',
+    'Z',
 }
 
 local function parse_log_line(line)
