@@ -9,12 +9,6 @@ return {
     steno_capture = '|(.-)|',
     suggestion_notifications = {
         enabled = true,
-        match_function = function(text)
-            local suggestions = {}
-            for matches in text:gmatch('>+%w') do
-            end
-            return suggestions
-        end,
     },
     status_line_setup = {
         enabled = true,

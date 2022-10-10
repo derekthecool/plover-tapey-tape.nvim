@@ -5,6 +5,7 @@ local opts = require('plover-tapey-tape.opts')
 ---@return table
 local function setup(user_opts)
     if user_opts ~= nil then
+        -- TODO: error check widths and heights and send warnings
         for k, v in pairs(user_opts) do
             require('plover-tapey-tape.opts')[k] = v
         end
@@ -203,7 +204,11 @@ local function get_tapey_tape_filename()
         end
     end
 
-    vim.notify('Could not autodetect the file location of ' .. tapey_tape_name, 'WARN')
+    vim.notify(
+        'Could not autodetect the file location of ' .. tapey_tape_name,
+        'WARN',
+        { title = 'plover-tapey-tape.nvim' }
+    )
     return nil
 end
 
@@ -317,14 +322,18 @@ local function update_display(line)
     local utils = require('plover-tapey-tape.utils')
     local parsed_log_line = utils.parse_log_line(line)
 
-    if parsed_log_line.suggestions ~= nil then
-        vim.schedule_wrap(function()
-            local suggestion_text = vim.inspect(parsed_log_line.suggestions)
-            -- for _, suggestion in ipairs(parsed_log_line.suggestions) do
-            --     suggestion_text = suggestion_text .. '\n' .. suggestion
-            -- end
+    if opts.suggestion_notifications.enabled then
+        if parsed_log_line.suggestions ~= nil then
+            local suggestion_text = ''
+            for item, suggestion in ipairs(parsed_log_line.suggestions) do
+                if item == 1 then
+                    suggestion_text = suggestion
+                else
+                    suggestion_text = (suggestion_text or '') .. '\n' .. suggestion
+                end
+            end
             vim.notify(suggestion_text, vim.log.levels.INFO, { title = 'plover-tapey-tape.nvim suggestions' })
-        end)
+        end
     end
 
     if Tapey_tape_window_number ~= nil and Tapey_tape_buffer_number ~= nil then
@@ -390,14 +399,14 @@ local function draw_steno_keyboard_extmark(parsed_steno_table)
     local left_half = 'left_half'
     local right_half = 'right_half'
 
-    local lines_in_file = vim.api.nvim_buf_line_count(Tapey_tape_buffer_number)
+    local lines_in_file = vim.api.nvim_buf_line_count(Tapey_tape_buffer_number) + 1 -- 0 based
     local window_height = vim.api.nvim_win_get_height(Tapey_tape_window_number)
     local window_width = vim.api.nvim_win_get_width(Tapey_tape_window_number)
-    local center_width = math.floor((window_width / 2) - #steno_keyboard_layout.left_half[1] - 1)
+    local center_width = math.ceil((window_width / 2) - #steno_keyboard_layout.left_half[1] - 1)
 
     local start_column = center_width
     local start_row = math.floor(lines_in_file - window_height)
-    if start_row < 0 then
+    if start_row <= 0 then
         start_row = 0
     end
     local current_row = start_row
@@ -434,32 +443,6 @@ local function draw_steno_keyboard_extmark(parsed_steno_table)
     )
 end
 
-local steno_lookup = {
-    '#',
-    'S',
-    'T',
-    'K',
-    'P',
-    'W',
-    'H',
-    'R',
-    'A',
-    'O',
-    '*',
-    'E',
-    'U',
-    'F',
-    'R',
-    'P',
-    'B',
-    'L',
-    'G',
-    'T',
-    'S',
-    'D',
-    'Z',
-}
-
 local function parse_log_line(line)
     if line == nil then
         return nil
@@ -481,7 +464,7 @@ local function parse_log_line(line)
             table.insert(parsed_line.steno, match)
         end
 
-        local suggestion_match = line:match(' >+([A-Z0-9 ]+)$')
+        local suggestion_match = line:match(' >+([A-Z0-9 ]+)%s?$')
         if suggestion_match ~= nil then
             parsed_line.suggestions = {}
             for suggestion in suggestion_match:gmatch('%w+') do
@@ -505,7 +488,6 @@ return {
     close_window = close_window,
     update_display = update_display,
     parse_log_line = parse_log_line,
-    steno_lookup = steno_lookup,
     draw_steno_keyboard_extmark = draw_steno_keyboard_extmark,
     find_char_highlight = find_char_highlight,
 }

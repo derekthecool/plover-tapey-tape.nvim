@@ -83,9 +83,6 @@ describe('tapey-tape-util tests --', function()
             local output = util.parse_log_line(line)
             print(vim.inspect(output))
             assert.are.same(23, #output.steno_keys)
-            if index == 1 then
-                assert.are.same('K', output.steno[util.steno_lookup.K])
-            end
         end
     end)
 
