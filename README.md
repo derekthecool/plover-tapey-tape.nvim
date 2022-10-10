@@ -22,4 +22,10 @@ TODO
 
 ## Implemented Features
 
-- [ ] Autocommand to close file watcher when neovim is closing
+- [X] Enable auto discovery of tapey-tape log file. Supports Linux, WSL,
+      Windows, Mac.
+- [X] Draw a steno keyboard in realtime that show your keys highlighted
+- [ ] Show notifications for suggestions
+- [x] Autocommand to close file watcher when neovim is closing
+- [x] Autocommand to disable autoscrolling when inside tapey-tape log buffer
+- [x] Autocommand to enable autoscrolling when outside tapey-tape log buffer

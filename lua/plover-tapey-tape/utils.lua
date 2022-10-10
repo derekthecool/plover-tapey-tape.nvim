@@ -10,13 +10,44 @@ local function setup(user_opts)
         end
     end
 
+    local group = vim.api.nvim_create_augroup('plover-tapey-tape', { clear = true })
+
     -- Create autocommand to stop the updating and avoid shutdown errors
     vim.api.nvim_create_autocmd('VimLeavePre', {
         pattern = { '*' },
         callback = function()
             require('plover-tapey-tape').stop()
         end,
-        group = vim.api.nvim_create_augroup('plover-tapey-tape', { clear = true }),
+        group = group,
+    })
+
+    -- Close neovim when tape buffer is the only remaining buffer
+    vim.api.nvim_create_autocmd('BufEnter', {
+        nested = true,
+        callback = function()
+            if #vim.api.nvim_list_wins() == 1 and vim.api.nvim_buf_get_name(0):match('TapeyTape') ~= nil then
+                vim.cmd('quit')
+            end
+        end,
+        group = group,
+    })
+
+    -- Event to enable autoscroll when inside tape buffer
+    vim.api.nvim_create_autocmd('BufEnter', {
+        pattern = 'TapeyTape',
+        callback = function()
+            InsideTapeBuffer = true
+        end,
+        group = group,
+    })
+
+    -- Event to disable autoscroll when not inside tape buffer
+    vim.api.nvim_create_autocmd('BufLeave', {
+        pattern = 'TapeyTape',
+        callback = function()
+            InsideTapeBuffer = false
+        end,
+        group = group,
     })
 
     require('plover-tapey-tape').start()
@@ -199,6 +230,10 @@ local function detect_tapey_tape_line_width()
 end
 
 local function scroll_buffer_to_bottom()
+    if InsideTapeBuffer then
+        return
+    end
+
     local function win_exists(win_number)
         local found = false
         for _, win in ipairs(vim.api.nvim_list_wins()) do
@@ -240,22 +275,28 @@ local function open_window()
 
     local open_method = opts.open_method
 
-    -- TODO: return to buffer user was in before opening tape buffer
-    if open_method == 'split' then
-        vim.cmd([[sbuffer ]] .. buffer_name)
-        Tapey_tape_window_number = vim.api.nvim_get_current_win()
-        vim.api.nvim_win_set_height(Tapey_tape_window_number, opts.vertical_split_height)
-    elseif open_method == 'vsplit' then
-        vim.cmd([[vertical sbuffer ]] .. buffer_name)
+    -- TODO: make more DRY
+    if open_method == 'vsplit' then
+        vim.api.nvim_cmd({ cmd = 'split', args = { buffer_name }, mods = { vertical = true } }, {})
         Tapey_tape_window_number = vim.api.nvim_get_current_win()
         local width = utils.detect_tapey_tape_line_width()
         vim.api.nvim_win_set_width(Tapey_tape_window_number, width)
+        -- Go back to opened buffer that command was run from
+        vim.api.nvim_cmd({ cmd = 'normal', args = { 'h' } }, {})
+    elseif open_method == 'split' then
+        vim.api.nvim_cmd({ cmd = 'split', args = { buffer_name }, mods = { vertical = false } }, {})
+        Tapey_tape_window_number = vim.api.nvim_get_current_win()
+        vim.api.nvim_win_set_height(Tapey_tape_window_number, opts.vertical_split_height)
+        -- Go back to opened buffer that command was run from
+        vim.api.nvim_cmd({ cmd = 'normal', args = { 'k' } }, {})
     end
 
     -- Set window options
-    vim.api.nvim_win_set_option(Tapey_tape_window_number, 'number', false)
-    vim.api.nvim_win_set_option(Tapey_tape_window_number, 'relativenumber', false)
-    vim.api.nvim_win_set_option(Tapey_tape_window_number, 'signcolumn', 'auto')
+    if Tapey_tape_window_number ~= nil then
+        vim.api.nvim_win_set_option(Tapey_tape_window_number, 'number', false)
+        vim.api.nvim_win_set_option(Tapey_tape_window_number, 'relativenumber', false)
+        vim.api.nvim_win_set_option(Tapey_tape_window_number, 'signcolumn', 'auto')
+    end
 end
 
 local function close_window()
@@ -263,7 +304,6 @@ local function close_window()
     vim.api.nvim_buf_delete(Tapey_tape_buffer_number, { force = true })
     Tapey_tape_buffer_number = nil
     Tapey_tape_window_number = nil
-    -- vim.api.nvim_win_close(Tapey_tape_window_number, true)
 end
 
 local function update_display(line)
@@ -277,7 +317,7 @@ local function update_display(line)
     local utils = require('plover-tapey-tape.utils')
     local parsed_log_line = utils.parse_log_line(line)
 
-    -- if parsed_log_line.suggestions ~= nil then
+    if parsed_log_line.suggestions ~= nil then
         vim.schedule_wrap(function()
             local suggestion_text = vim.inspect(parsed_log_line.suggestions)
             -- for _, suggestion in ipairs(parsed_log_line.suggestions) do
@@ -285,7 +325,7 @@ local function update_display(line)
             -- end
             vim.notify(suggestion_text, vim.log.levels.INFO, { title = 'plover-tapey-tape.nvim suggestions' })
         end)
-    -- end
+    end
 
     if Tapey_tape_window_number ~= nil and Tapey_tape_buffer_number ~= nil then
         if vim.api.nvim_buf_line_count(Tapey_tape_buffer_number) < 8 then

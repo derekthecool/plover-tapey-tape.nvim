@@ -4,7 +4,7 @@
 return {
     filepath = 'auto',
     open_method = 'vsplit',
-    vertical_split_height = 3,
+    vertical_split_height = 9,
     horizontal_split_width = 54,
     steno_capture = '|(.-)|',
     suggestion_notifications = {

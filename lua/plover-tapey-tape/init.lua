@@ -11,6 +11,7 @@ end
 
 local function start()
     TapeyTapeActive = true
+    InsideTapeBuffer = false
     -- Starting timer in neovim : https://stackoverflow.com/questions/68598026/running-async-lua-function-in-neovim
     local timer = vim.loop.new_timer()
     timer:start(
