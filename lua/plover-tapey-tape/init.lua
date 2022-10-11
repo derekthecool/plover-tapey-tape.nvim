@@ -4,7 +4,6 @@ local function update()
     local line = utils.read_last_line_of_tapey_tape()
     if line ~= nil and line ~= Previous_line then
         Previous_line = line
-        local parsed_line = utils.parse_log_line(line)
         utils.update_display(line)
     end
 end

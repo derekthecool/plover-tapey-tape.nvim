@@ -14,18 +14,32 @@ There are two modes that this plugin can work with:
 
 ## Install
 
-TODO
+Requires neovim version 0.8.0
+
+### Install With Packer
+
+```lua
+use('derekthecool/plover-tapey-tape.nvim')
+```
+
+### install With Vim Plug
+
+```vim
+Plug 'derekthecool/plover-tapey-tape.nvim'
+```
 
 ## Screenshots
 
 ![Status line and vertical split](./images/plover-tapey-tape.nvim-screenshot.jpg)
 
+[![asciicast](https://asciinema.org/a/kMIty8IZvSYhbVaaeKG8DbBqr.svg)](https://asciinema.org/a/kMIty8IZvSYhbVaaeKG8DbBqr)
+
 ## Implemented Features
 
-- [X] Enable auto discovery of tapey-tape log file. Supports Linux, WSL,
+- [x] Enable auto discovery of tapey-tape log file. Supports Linux, WSL,
       Windows, Mac.
-- [X] Draw a steno keyboard in realtime that show your keys highlighted
-- [ ] Show notifications for suggestions
+- [x] Draw a steno keyboard in realtime that show your keys highlighted
+- [x] Show notifications for suggestions
 - [x] Autocommand to close file watcher when neovim is closing
 - [x] Autocommand to disable autoscrolling when inside tapey-tape log buffer
 - [x] Autocommand to enable autoscrolling when outside tapey-tape log buffer
