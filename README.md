@@ -30,7 +30,7 @@ Plug 'derekthecool/plover-tapey-tape.nvim'
 
 ## Screenshots
 
-![Status line and vertical split](./images/plover-tapey-tape.nvim-screenshot.jpg)
+![Status line and vertical split](./images/plover-tapey-tape-demo1.jpg)
 
 [![asciicast](https://asciinema.org/a/kMIty8IZvSYhbVaaeKG8DbBqr.svg)](https://asciinema.org/a/kMIty8IZvSYhbVaaeKG8DbBqr)
 
