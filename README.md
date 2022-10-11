@@ -65,7 +65,7 @@ vim.keymap.set('n', '<leader>ts', require('plover-tapey-tape').stop) -- stop plu
 
 ![Status line and vertical split](./images/plover-tapey-tape-demo1.jpg)
 
-[![asciicast](https://asciinema.org/a/kMIty8IZvSYhbVaaeKG8DbBqr.svg)](https://asciinema.org/a/kMIty8IZvSYhbVaaeKG8DbBqr)
+[![asciicast](https://asciinema.org/a/527205.svg)](https://asciinema.org/a/527205)
 
 ## Implemented Features
 
