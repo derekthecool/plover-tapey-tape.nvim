@@ -51,6 +51,20 @@ require('plover-tapey-tape').setup({ -- Use custom settings (defaults are shown)
 }
 ```
 
+### Statusline Setup
+
+If the status_line_setup feature is enabled then you can access the global lua
+variable `TapeyTape`.
+
+If you use [lualine.nvim](https://github.com/nvim-lualine/lualine.nvim) you can
+put global variables into your settings easily.
+
+```lua
+lualine_c = {'TapeyTape'},
+```
+
+TODO: show how to add to status line without lualine.
+
 ### Suggested Mappings
 
 No mappings are set by the plugin. Here are some suggested mappings for
@@ -64,6 +78,13 @@ vim.keymap.set('n', '<leader>ts', require('plover-tapey-tape').stop) -- stop plu
 ## Screenshots
 
 ![Status line and vertical split](./images/plover-tapey-tape-demo1.jpg)
+
+This demo shows the following features:
+
+- Running the toggle command to open the tape window
+- Status line showing the steno keys from the variable `TapeyTape`
+- Suggestions pop up notifications. When I write `good morning` 4 suggestions
+  are displayed.
 
 [![asciicast](https://asciinema.org/a/527205.svg)](https://asciinema.org/a/527205)
 
