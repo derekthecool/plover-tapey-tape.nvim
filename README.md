@@ -28,6 +28,39 @@ use('derekthecool/plover-tapey-tape.nvim')
 Plug 'derekthecool/plover-tapey-tape.nvim'
 ```
 
+## Setup And Usage
+
+Call the setup function with your desired settings.
+
+```lua
+require('plover-tapey-tape').setup() -- Use all default settings
+
+require('plover-tapey-tape').setup({ -- Use custom settings (defaults are shown)
+    filepath = 'auto',
+    open_method = 'vsplit',
+    vertical_split_height = 9,
+    horizontal_split_width = 54,
+    steno_capture = '|(.-)|',
+    suggestion_notifications = {
+        enabled = true,
+    },
+    status_line_setup = {
+        enabled = true,
+        additional_filter = '(|.-|)',
+    },
+}
+```
+
+### Suggested Mappings
+
+No mappings are set by the plugin. Here are some suggested mappings for
+available commands.
+
+```lua
+vim.keymap.set('n', '<leader>tt', require('plover-tapey-tape').toggle) -- open tape window
+vim.keymap.set('n', '<leader>ts', require('plover-tapey-tape').stop) -- stop plugin
+```
+
 ## Screenshots
 
 ![Status line and vertical split](./images/plover-tapey-tape-demo1.jpg)
