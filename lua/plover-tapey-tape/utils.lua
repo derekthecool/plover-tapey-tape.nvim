@@ -336,6 +336,14 @@ local function update_display(line)
         end
     end
 
+    -- TODO move to config item
+    local trim_timestamp = true
+    if trim_timestamp == true then
+        -- Clear the timestamp out
+        -- +++++ |       R      R        | {MODE:RESET}{^\n}{^} 2023-02-13 09:22:02.569
+        parsed_log_line.line = parsed_log_line.line:gsub('%d%d%d%d%-%d%d%-%d%d %d%d:%d%d:%d%d.%d%d%d', '')
+    end
+
     if Tapey_tape_window_number ~= nil and Tapey_tape_buffer_number ~= nil then
         if vim.api.nvim_buf_line_count(Tapey_tape_buffer_number) < 8 then
             vim.api.nvim_buf_set_lines(Tapey_tape_buffer_number, -1, -1, false, { '', '', '', '', '', '', '', '' })
