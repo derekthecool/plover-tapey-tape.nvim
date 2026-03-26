@@ -61,48 +61,178 @@ local function setup(user_opts)
     return (require('plover-tapey-tape.opts'))
 end
 
-local function read_last_line_of_tapey_tape()
-    local tapey_tape_file = ''
+--- Extract the last complete line from a string buffer.
+--- Returns the last line and any remaining partial content.
+---@param buffer string
+---@return string|nil last_line
+---@return string remaining
+local function extract_last_line(buffer)
+    if buffer == '' then
+        return nil, ''
+    end
 
-    if opts.filepath == 'auto' then
-        tapey_tape_file = require('plover-tapey-tape.utils').get_tapey_tape_filename()
-        if require('plover-tapey-tape.utils').file_exists(tapey_tape_file) then
-            require('plover-tapey-tape.opts').filepath = tapey_tape_file
+    -- Find all complete lines (ending with \n)
+    local last_line = nil
+    local last_newline_pos = 0
+    for line in buffer:gmatch('([^\n]*)\n') do
+        if line ~= '' then
+            last_line = line
         end
-    else
-        tapey_tape_file = opts.filepath
+        last_newline_pos = buffer:find('\n', last_newline_pos + 1) or last_newline_pos
     end
 
-    if not tapey_tape_file then
+    -- Anything after the last newline is a partial line to keep buffered
+    local remaining = buffer:sub(last_newline_pos + 1)
+
+    -- If no newlines found, everything is partial
+    if last_newline_pos == 0 then
+        return nil, buffer
+    end
+
+    -- Strip trailing \r from the line (Windows line endings)
+    if last_line then
+        last_line = last_line:gsub('\r$', '')
+    end
+
+    return last_line, remaining
+end
+
+-- Module-level state for the file watcher
+local watcher_state = {
+    handle = nil,
+    fd = nil,
+    offset = 0,
+    filepath = nil,
+    line_buffer = '',
+    on_new_line = nil,
+    retry_timer = nil,
+}
+
+local function read_new_data()
+    if not watcher_state.fd then
         return
     end
 
-    local tapey_tape_file_handle = io.open(tapey_tape_file)
+    vim.uv.fs_fstat(watcher_state.fd, function(err, stat)
+        if err or not stat then
+            return
+        end
 
-    if not tapey_tape_file_handle then
-        return
-    end
+        local new_size = stat.size
 
-    -- Go to end of the file and then backwards by an offset
-    tapey_tape_file_handle:seek('end', -200)
-    local line = ''
-    for _ = 1, 10 do
-        local current_line = tapey_tape_file_handle:read('l')
-        if current_line then
-            current_line = current_line
-            if current_line ~= nil then
-                line = current_line
+        -- Handle file truncation/rotation
+        if new_size < watcher_state.offset then
+            watcher_state.offset = 0
+            watcher_state.line_buffer = ''
+        end
+
+        if new_size <= watcher_state.offset then
+            return
+        end
+
+        local bytes_to_read = new_size - watcher_state.offset
+        vim.uv.fs_read(watcher_state.fd, bytes_to_read, watcher_state.offset, function(read_err, data)
+            if read_err or not data then
+                return
             end
-        else
-            break
+
+            watcher_state.offset = new_size
+            watcher_state.line_buffer = watcher_state.line_buffer .. data
+
+            local last_line, remaining = extract_last_line(watcher_state.line_buffer)
+            watcher_state.line_buffer = remaining
+
+            if last_line and watcher_state.on_new_line then
+                vim.schedule(function()
+                    watcher_state.on_new_line(last_line)
+                end)
+            end
+        end)
+    end)
+end
+
+--- Start watching a file for changes using fs_event with fs_poll fallback.
+---@param filepath string
+---@param on_new_line function callback receiving the latest complete line
+local function start_watching(filepath, on_new_line)
+    -- Stop any existing watcher first
+    if watcher_state.handle then
+        require('plover-tapey-tape.utils').stop_watching()
+    end
+
+    watcher_state.filepath = filepath
+    watcher_state.on_new_line = on_new_line
+
+    vim.uv.fs_open(filepath, 'r', 438, function(open_err, fd)
+        if open_err or not fd then
+            return
         end
+
+        watcher_state.fd = fd
+
+        -- Stat to get initial file size (start from end)
+        vim.uv.fs_fstat(fd, function(stat_err, stat)
+            if stat_err or not stat then
+                return
+            end
+
+            watcher_state.offset = stat.size
+
+            -- Try fs_event first (OS-native: inotify/FSEvents/ReadDirectoryChangesW)
+            local fs_event = vim.uv.new_fs_event()
+            local ok = pcall(function()
+                fs_event:start(filepath, {}, function(err)
+                    if err then
+                        return
+                    end
+                    read_new_data()
+                end)
+            end)
+
+            if ok then
+                watcher_state.handle = fs_event
+            else
+                -- Fallback to fs_poll
+                if fs_event then
+                    fs_event:close()
+                end
+                local fs_poll = vim.uv.new_fs_poll()
+                fs_poll:start(filepath, opts.watcher.poll_fallback_interval, function()
+                    read_new_data()
+                end)
+                watcher_state.handle = fs_poll
+            end
+        end)
+    end)
+end
+
+--- Stop watching the file and clean up all handles.
+local function stop_watching()
+    if watcher_state.handle then
+        if not watcher_state.handle:is_closing() then
+            watcher_state.handle:stop()
+            watcher_state.handle:close()
+        end
+        watcher_state.handle = nil
     end
 
-    if tapey_tape_file_handle then
-        tapey_tape_file_handle:close()
+    if watcher_state.fd then
+        vim.uv.fs_close(watcher_state.fd, function() end)
+        watcher_state.fd = nil
     end
 
-    return line
+    if watcher_state.retry_timer then
+        if not watcher_state.retry_timer:is_closing() then
+            watcher_state.retry_timer:stop()
+            watcher_state.retry_timer:close()
+        end
+        watcher_state.retry_timer = nil
+    end
+
+    watcher_state.offset = 0
+    watcher_state.filepath = nil
+    watcher_state.line_buffer = ''
+    watcher_state.on_new_line = nil
 end
 
 -- Helpful command to run process and get exit code, stdout, and stderr
@@ -209,6 +339,22 @@ local function get_tapey_tape_filename()
         'WARN',
         { title = 'plover-tapey-tape.nvim' }
     )
+    return nil
+end
+
+--- Resolve the tapey-tape filepath, handling 'auto' detection and caching.
+---@return string|nil
+local function resolve_tapey_tape_filepath()
+    if opts.filepath ~= 'auto' then
+        return opts.filepath
+    end
+
+    local filename = get_tapey_tape_filename()
+    if filename and file_exists(filename) then
+        opts.filepath = filename
+        return filename
+    end
+
     return nil
 end
 
@@ -486,7 +632,10 @@ end
 
 return {
     setup = setup,
-    read_last_line_of_tapey_tape = read_last_line_of_tapey_tape,
+    resolve_tapey_tape_filepath = resolve_tapey_tape_filepath,
+    extract_last_line = extract_last_line,
+    start_watching = start_watching,
+    stop_watching = stop_watching,
     execute_command = execute_command,
     get_tapey_tape_filename = get_tapey_tape_filename,
     detect_tapey_tape_line_width = detect_tapey_tape_line_width,

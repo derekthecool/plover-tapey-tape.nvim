@@ -168,3 +168,38 @@ watcher = {
 2. Manual: open neovim, `require('plover-tapey-tape').setup()`, type steno strokes, verify status line updates and buffer display works
 3. Manual: test `toggle`, `stop`, verify fs_event watcher cleans up (no errors on `:quit`)
 4. Edge: rename/delete `tapey_tape.txt` while running — verify graceful fallback
+
+---
+
+## Implementation Results
+
+All automated steps completed successfully.
+
+### Phase 1: Test Infrastructure -- DONE
+- Migrated 16 tests from plenary/busted to mini.test (native syntax)
+- Created `Makefile`, `scripts/minimal_init.lua`, `tests/test_utils.lua`
+- Modeled after `neotest-pester` project structure
+- Deleted old `lua/tests/utils_spec.lua`
+- `make test` passes 16/16
+
+### Phase 2: File Tailing Refactor -- DONE
+- Added `watcher` config to `opts.lua`
+- Replaced `read_last_line_of_tapey_tape()` (sync io.open every 90ms) with:
+  - `resolve_tapey_tape_filepath()` — path resolution with caching
+  - `start_watching()` — `vim.uv.new_fs_event` with `fs_poll` fallback
+  - `read_new_data()` — async incremental reads tracking byte offset
+  - `stop_watching()` — clean handle teardown
+  - `extract_last_line()` — pure function for line extraction with partial buffering
+- Replaced timer-based polling in `init.lua` with event-driven watcher
+- Added 9 new tests for `extract_last_line` and `resolve_tapey_tape_filepath`
+- `make test` passes 25/25
+
+### Phase 3: Cleanup -- DONE
+- Added Development/Testing section to README.md
+- Ran `stylua .` on all files
+- Final `make test`: 25/25 pass, 0 failures
+
+### Remaining Manual Verification
+- [ ] Test with actual Plover steno output
+- [ ] Test `toggle`, `stop`, verify clean shutdown
+- [ ] Test file truncation/rotation edge case

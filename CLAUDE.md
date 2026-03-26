@@ -13,11 +13,11 @@ Requires neovim >= 0.8.0.
 
 ## Architecture
 
-- **`lua/plover-tapey-tape/init.lua`** — Public API (`setup`, `start`, `stop`, `toggle`). Runs a `vim.loop` timer (90ms interval) that polls the tapey-tape log file and triggers display updates.
+- **`lua/plover-tapey-tape/init.lua`** — Public API (`setup`, `start`, `stop`, `toggle`). Uses libuv `fs_event` watcher to detect file changes and triggers display updates.
 - **`lua/plover-tapey-tape/opts.lua`** — Default configuration table. `setup()` merges user options into this table in-place.
-- **`lua/plover-tapey-tape/utils.lua`** — Core logic: file I/O (`read_last_line_of_tapey_tape`, `get_tapey_tape_filename` with cross-platform auto-detection for Linux/WSL/Mac/Windows), log line parsing (`parse_log_line`), window/buffer management (`open_window`, `close_window`, `scroll_buffer_to_bottom`), and steno keyboard rendering via extmarks (`draw_steno_keyboard_extmark`, `find_char_highlight`).
+- **`lua/plover-tapey-tape/utils.lua`** — Core logic: file watching (`start_watching`, `stop_watching`, `read_new_data` using `vim.uv` async I/O), path resolution (`resolve_tapey_tape_filepath`, `get_tapey_tape_filename` with cross-platform auto-detection for Linux/WSL/Mac/Windows), log line parsing (`parse_log_line`, `extract_last_line`), window/buffer management (`open_window`, `close_window`, `scroll_buffer_to_bottom`), and steno keyboard rendering via extmarks (`draw_steno_keyboard_extmark`, `find_char_highlight`).
 - **`lua/plover-tapey-tape/steno-keyboard-layout.lua`** — Static data: steno keyboard layout tables (left/right halves + row borders) used for the virtual keyboard overlay.
-- **`lua/tests/utils_spec.lua`** — Tests using [busted](https://olivinelabs.com/busted/) (lua test framework, typically run via [plenary.nvim](https://github.com/nvim-lua/plenary.nvim) test harness).
+- **`tests/test_utils.lua`** — Tests using [mini.test](https://github.com/echasnovski/mini.nvim/blob/main/readmes/mini-test.md).
 
 ### Key globals
 
@@ -35,11 +35,13 @@ Config in `.stylua.toml`: 120 col width, 4-space indentation, single quotes, Uni
 
 ### Testing
 
-Tests use busted via plenary.nvim. From neovim:
+Tests use mini.test. Run headless via Make:
 
-```vim
-:PlenaryBustedDirectory lua/tests/
+```bash
+make test
 ```
+
+Dependencies (`deps/mini.nvim`) are cloned automatically on first run.
 
 ## Tapey-Tape Log Format
 

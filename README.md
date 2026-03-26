@@ -16,16 +16,16 @@ There are two modes that this plugin can work with:
 
 Requires neovim version 0.8.0
 
-### Install With Packer
+### Install With Lazy
 
 ```lua
-use('derekthecool/plover-tapey-tape.nvim')
-```
-
-### install With Vim Plug
-
-```vim
-Plug 'derekthecool/plover-tapey-tape.nvim'
+{
+    'derekthecool/plover-tapey-tape.nvim',
+    keys = {
+        { '<leader>pt', function() require('plover-tapey-tape').toggle() end, desc = 'Toggle plover tapey tape', },
+        { '<leader>ps', function() require('plover-tapey-tape').stop() end, desc = 'Stop plover tapey tape', },
+    },
+},
 ```
 
 ## Setup And Usage
@@ -87,6 +87,17 @@ This demo shows the following features:
   are displayed.
 
 [![asciicast](https://asciinema.org/a/527205.svg)](https://asciinema.org/a/527205)
+
+## Development
+
+### Running Tests
+
+Tests use [mini.test](https://github.com/echasnovski/mini.nvim/blob/main/readmes/mini-test.md).
+The test dependency is cloned automatically on first run.
+
+```bash
+make test
+```
 
 ## Implemented Features
 
