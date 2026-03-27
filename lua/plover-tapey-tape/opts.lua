@@ -15,6 +15,7 @@ return {
         additional_filter = '(|.-|)',
     },
     watcher = {
-        poll_fallback_interval = 500,
+        poll_fallback_interval = 100,
     },
+    autostart = true,
 }

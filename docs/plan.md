@@ -200,6 +200,37 @@ All automated steps completed successfully.
 - Final `make test`: 25/25 pass, 0 failures
 
 ### Remaining Manual Verification
-- [ ] Test with actual Plover steno output
+- [x] Test with actual Plover steno output — autodetection works, live updates do NOT arrive
+- [ ] Test `toggle`, `stop`, verify clean shutdown
+- [ ] Test file truncation/rotation edge case
+
+---
+
+## Phase 4: Bug Fixes (post-manual testing)
+
+### Context
+
+Manual testing revealed: file autodetection works, but live updates never arrive. Three additional issues reported: deprecated API calls, split sizing not using config.
+
+### Bugs Found
+
+1. **(Critical) fs_event watches file instead of directory on Windows** — Windows `ReadDirectoryChangesW` needs a directory path. Fix: watch parent dir, filter by basename.
+2. **(Critical) fs_event callback signature** — was `function(err)`, needs `function(err, filename, events)` for directory-level filtering.
+3. **`detect_tapey_tape_line_width` crashes on short files** — `file:read('l')` returns nil at EOF, then `#line` crashes.
+4. **Deprecated `nvim_win_set_option`** (3 occurrences) — replace with `nvim_set_option_value`.
+5. **vsplit ignores `horizontal_split_width` config** — uses auto-detect instead of user config.
+
+### Phase 4 Results -- DONE
+
+All 5 bugs fixed in `lua/plover-tapey-tape/utils.lua`:
+- `start_watching()`: now watches parent directory via `vim.fs.dirname()`, filters by `vim.fs.basename()`, uses correct 3-param callback `(err, changed_filename, events)`
+- `detect_tapey_tape_line_width()`: added nil guard + break at EOF
+- `open_window()`: replaced 3x `nvim_win_set_option` with `nvim_set_option_value`
+- `open_window()`: vsplit now uses `opts.horizontal_split_width` instead of auto-detect
+- `make test`: 25/25 pass, 0 failures
+- `stylua .` applied
+
+### Remaining Manual Verification
+- [ ] Test live updates with actual Plover steno output (after fs_event directory fix)
 - [ ] Test `toggle`, `stop`, verify clean shutdown
 - [ ] Test file truncation/rotation edge case

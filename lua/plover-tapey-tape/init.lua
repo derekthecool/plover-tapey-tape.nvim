@@ -20,6 +20,9 @@ local function stop()
     TapeyTapeActive = false
     TapeyTape = nil
     utils.stop_watching()
+    if TapeyTapeWindowOpen then
+        utils.close_window()
+    end
 end
 
 local function toggle()

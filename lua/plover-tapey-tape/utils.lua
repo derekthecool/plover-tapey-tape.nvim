@@ -1,11 +1,20 @@
 local opts = require('plover-tapey-tape.opts')
 
+local log_file_path = vim.fs.joinpath(vim.fn.stdpath('log'), 'plover-tapey-tape.log')
+
+local function log(msg)
+    local f = io.open(log_file_path, 'a')
+    if f then
+        f:write(string.format('[%s] %s\n', os.date('%Y-%m-%d %H:%M:%S'), msg))
+        f:close()
+    end
+end
+
 ---Setup function, takes default values from the module plover-tapey-tape.opts
 ---@param user_opts table|nil
 ---@return table
 local function setup(user_opts)
     if user_opts ~= nil then
-        -- TODO: error check widths and heights and send warnings
         for k, v in pairs(user_opts) do
             require('plover-tapey-tape.opts')[k] = v
         end
@@ -51,7 +60,10 @@ local function setup(user_opts)
         group = group,
     })
 
-    require('plover-tapey-tape').start()
+    log('setup() called, starting plugin')
+    if require('plover-tapey-tape.opts').autostart then
+        require('plover-tapey-tape').start()
+    end
 
     vim.api.nvim_set_hl(0, 'FancyStenoBorder', { fg = '#6c25be', bg = '#39028d' })
     vim.api.nvim_set_hl(0, 'FancyStenoActive', { fg = '#222222', bg = '#22ffff', bold = true, italic = true })
@@ -110,11 +122,13 @@ local watcher_state = {
 
 local function read_new_data()
     if not watcher_state.fd then
+        log('read_new_data: no fd, skipping')
         return
     end
 
     vim.uv.fs_fstat(watcher_state.fd, function(err, stat)
         if err or not stat then
+            log('read_new_data: fs_fstat error: ' .. tostring(err))
             return
         end
 
@@ -122,6 +136,7 @@ local function read_new_data()
 
         -- Handle file truncation/rotation
         if new_size < watcher_state.offset then
+            log('read_new_data: file truncated, resetting offset')
             watcher_state.offset = 0
             watcher_state.line_buffer = ''
         end
@@ -131,8 +146,10 @@ local function read_new_data()
         end
 
         local bytes_to_read = new_size - watcher_state.offset
+        log(string.format('read_new_data: reading %d bytes at offset %d', bytes_to_read, watcher_state.offset))
         vim.uv.fs_read(watcher_state.fd, bytes_to_read, watcher_state.offset, function(read_err, data)
             if read_err or not data then
+                log('read_new_data: fs_read error: ' .. tostring(read_err))
                 return
             end
 
@@ -155,8 +172,11 @@ end
 ---@param filepath string
 ---@param on_new_line function callback receiving the latest complete line
 local function start_watching(filepath, on_new_line)
+    log('start_watching: filepath=' .. filepath)
+
     -- Stop any existing watcher first
     if watcher_state.handle then
+        log('start_watching: stopping existing watcher')
         require('plover-tapey-tape.utils').stop_watching()
     end
 
@@ -165,49 +185,44 @@ local function start_watching(filepath, on_new_line)
 
     vim.uv.fs_open(filepath, 'r', 438, function(open_err, fd)
         if open_err or not fd then
+            log('start_watching: fs_open failed: ' .. tostring(open_err))
             return
         end
 
+        log('start_watching: file opened, fd=' .. tostring(fd))
         watcher_state.fd = fd
 
         -- Stat to get initial file size (start from end)
         vim.uv.fs_fstat(fd, function(stat_err, stat)
             if stat_err or not stat then
+                log('start_watching: fs_fstat failed: ' .. tostring(stat_err))
                 return
             end
 
             watcher_state.offset = stat.size
+            log('start_watching: initial offset=' .. stat.size)
 
-            -- Try fs_event first (OS-native: inotify/FSEvents/ReadDirectoryChangesW)
-            local fs_event = vim.uv.new_fs_event()
-            local ok = pcall(function()
-                fs_event:start(filepath, {}, function(err)
-                    if err then
-                        return
-                    end
-                    read_new_data()
-                end)
-            end)
-
-            if ok then
-                watcher_state.handle = fs_event
-            else
-                -- Fallback to fs_poll
-                if fs_event then
-                    fs_event:close()
+            -- Use fs_poll (stat-based) for reliable cross-platform file watching.
+            -- fs_event is unreliable on Windows for log files (fires once then stops
+            -- depending on how the writing application flushes).
+            local poll_interval = opts.watcher.poll_fallback_interval
+            log('start_watching: using fs_poll with interval=' .. poll_interval .. 'ms')
+            local fs_poll = vim.uv.new_fs_poll()
+            fs_poll:start(filepath, poll_interval, function(err)
+                if err then
+                    log('fs_poll error: ' .. tostring(err))
+                    return
                 end
-                local fs_poll = vim.uv.new_fs_poll()
-                fs_poll:start(filepath, opts.watcher.poll_fallback_interval, function()
-                    read_new_data()
-                end)
-                watcher_state.handle = fs_poll
-            end
+                read_new_data()
+            end)
+            watcher_state.handle = fs_poll
         end)
     end)
 end
 
 --- Stop watching the file and clean up all handles.
 local function stop_watching()
+    log('stop_watching: cleaning up')
     if watcher_state.handle then
         if not watcher_state.handle:is_closing() then
             watcher_state.handle:stop()
@@ -346,15 +361,18 @@ end
 ---@return string|nil
 local function resolve_tapey_tape_filepath()
     if opts.filepath ~= 'auto' then
+        log('resolve_tapey_tape_filepath: using configured path: ' .. opts.filepath)
         return opts.filepath
     end
 
     local filename = get_tapey_tape_filename()
     if filename and file_exists(filename) then
+        log('resolve_tapey_tape_filepath: auto-detected: ' .. filename)
         opts.filepath = filename
         return filename
     end
 
+    log('resolve_tapey_tape_filepath: could not find tapey_tape.txt')
     return nil
 end
 
@@ -366,6 +384,9 @@ local function detect_tapey_tape_line_width()
             local maximum_line_length = 0
             for _ = 1, 100 do
                 local line = file:read('l')
+                if not line then
+                    break
+                end
                 if #line > maximum_line_length then
                     maximum_line_length = #line
                 end
@@ -426,12 +447,10 @@ local function open_window()
 
     local open_method = opts.open_method
 
-    -- TODO: make more DRY
     if open_method == 'vsplit' then
         vim.api.nvim_cmd({ cmd = 'split', args = { buffer_name }, mods = { vertical = true } }, {})
         Tapey_tape_window_number = vim.api.nvim_get_current_win()
-        local width = utils.detect_tapey_tape_line_width()
-        vim.api.nvim_win_set_width(Tapey_tape_window_number, width)
+        vim.api.nvim_win_set_width(Tapey_tape_window_number, opts.horizontal_split_width)
         -- Go back to opened buffer that command was run from
         vim.api.nvim_cmd({ cmd = 'normal', args = { 'h' } }, {})
     elseif open_method == 'split' then
@@ -444,9 +463,9 @@ local function open_window()
 
     -- Set window options
     if Tapey_tape_window_number ~= nil then
-        vim.api.nvim_win_set_option(Tapey_tape_window_number, 'number', false)
-        vim.api.nvim_win_set_option(Tapey_tape_window_number, 'relativenumber', false)
-        vim.api.nvim_win_set_option(Tapey_tape_window_number, 'signcolumn', 'auto')
+        vim.api.nvim_set_option_value('number', false, { win = Tapey_tape_window_number })
+        vim.api.nvim_set_option_value('relativenumber', false, { win = Tapey_tape_window_number })
+        vim.api.nvim_set_option_value('signcolumn', 'auto', { win = Tapey_tape_window_number })
     end
 end
 
